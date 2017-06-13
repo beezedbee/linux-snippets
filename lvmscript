@@ -1,0 +1,31 @@
+for disk in d e f g h i j k l m n o; do
+  sed -e 's/\s*\([\+0-9a-zA-Z]*\).*/\1/' << EOF | fdisk /dev/sd$disk >/dev/null 2>&1
+    o # clear the in memory partition table
+    n # new partition
+    p # primary partition
+    1 # partition number 1
+      # default - start at beginning of disk 
+      # default, extend partition to end of disk
+    t # change the type
+    8e # set LVM type
+    w # write the partition table
+    q # and we're done
+EOF
+done
+
+disks=
+for disk in d e f g h i j k l m n o; do
+  disks+="/dev/sd$disk "
+done
+
+pvcreate $disks
+
+vgcreate vg-striped $disks
+
+lvcreate -i 12 -I 64 -L 1T -n lv-striped vg-striped
+
+mkfs.ext3 /dev/vg-striped/lv-striped 
+
+mkdir /mnt/striped
+
+mount /dev/vg-striped/lv-striped /mnt/striped
